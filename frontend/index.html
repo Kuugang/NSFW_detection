@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Profile Image</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+        <h1 class="text-2xl font-bold text-center mb-6">Profile Image</h1>
+
+        <form id="uploadForm" class="flex flex-col items-center gap-4" enctype="multipart/form-data">
+            <div class="relative mx-auto">
+                <!-- Profile Image Container -->
+                <div class="w-64 h-64 rounded-full overflow-hidden border-4 border-gray-200">
+                    <img id="profilePreview" class="w-full h-full object-cover" src="" alt="Profile" />
+                </div>
+
+                <!-- Upload Overlay -->
+                <div
+                    class="w-64 h-64 group hover:bg-black hover:bg-opacity-40 rounded-full absolute top-0 flex justify-center items-center cursor-pointer transition duration-300">
+                    <div class="hidden group-hover:flex flex-col items-center gap-2">
+                        <img class="w-12 h-12" src="https://www.svgrepo.com/show/33565/upload.svg" alt="Upload Icon" />
+                        <span class="text-white font-medium">Change Image</span>
+                    </div>
+                    <input type="file" id="fileInput" name="file" accept="image/*"
+                        class="absolute opacity-0 w-full h-full cursor-pointer" />
+                </div>
+            </div>
+
+            <button type="submit"
+                class="mt-6 bg-blue-500 text-white px-6 py-3 rounded-full font-medium hover:bg-blue-600 transition duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 w-48">
+                Upload
+            </button>
+        </form>
+
+        <!-- Status Message -->
+        <div id="responseMessage" class="mt-6 text-center font-medium"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById("uploadForm");
+        const fileInput = document.getElementById("fileInput");
+        const profilePreview = document.getElementById("profilePreview");
+        const responseMessage = document.getElementById("responseMessage");
+
+        // Preview selected image
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                profilePreview.src = URL.createObjectURL(file);
+            }
+        });
+
+        // Submit form via fetch
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const file = fileInput.files[0];
+            if (!file) {
+                responseMessage.textContent = "Please select an image.";
+                responseMessage.className = "mt-6 text-center font-medium text-yellow-600";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+            responseMessage.textContent = "Uploading...";
+            responseMessage.className = "mt-6 text-center font-medium text-blue-600";
+
+            try {
+                const res = await fetch("http://localhost:5000/upload-profile", {
+                    method: "POST",
+                    body: formData,
+                    mode: "cors", // Explicitly set CORS mode
+                    credentials: "same-origin"
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    responseMessage.textContent = `✅ Image accepted: ${data.label} (${data.confidence})`;
+                    responseMessage.className = "mt-6 text-center font-medium text-green-600";
+                } else if (res.status === 400) {
+                    const data = await res.json();
+                    responseMessage.textContent = `❌ Rejected: ${data.reason || data.error || "Unknown error"}`;
+                    responseMessage.className = "mt-6 text-center font-medium text-red-600";
+                } else {
+                    responseMessage.textContent = `❌ Server error: ${res.status}`;
+                    responseMessage.className = "mt-6 text-center font-medium text-red-600";
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+                responseMessage.textContent = "❌ Connection error. Is the server running?";
+                responseMessage.className = "mt-6 text-center font-medium text-red-600";
+            }
+        });
+    </script>
+</body>
+
+</html>
